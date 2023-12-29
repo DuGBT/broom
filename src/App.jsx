@@ -7,7 +7,6 @@ import Modal from "@mui/material/Modal";
 import SweeperIcon from "./assets/SweeperDAO.svg";
 import sweep from "./assets/sweep.svg";
 import bag from "./assets/bag.svg";
-import { styled } from "@mui/material";
 import { useConnectWallet, useAccountCenter } from "@web3-onboard/react";
 
 function App() {
@@ -62,7 +61,7 @@ function App() {
               setShowClaimModal(true);
             }}
           >
-            CLAIM
+            CLAIM $BROOM
           </Box>
         </Box>
         <Button
@@ -109,7 +108,7 @@ function App() {
                 marginBottom: "20px",
               }}
             >
-              HOLD $BROOM TO EARN{" "}
+              HOLD $BROOM TO EARN
               <span style={{ color: "rgba(232, 214, 152, 1)" }}>REDACTED</span>
             </Box>
             <Box
@@ -136,23 +135,44 @@ function App() {
               // flex: "0 1 500px",
             }}
           >
-            <Box>
+            <Stack direction={"row"} justifyContent={"space-between"}>
               <Box>
-                HOLDER SCORE
-                <span style={{ fontSize: "12px", lineHeight: "14px" }}>
-                  (Points x Multiplier)
-                </span>
+                <Box>
+                  HOLDER SCORE
+                  <span style={{ fontSize: "12px", lineHeight: "14px" }}>
+                    (Points x Multiplier)
+                  </span>
+                </Box>
+                <Box
+                  sx={{
+                    fontSize: "48px",
+                    color: "rgba(232, 214, 152, 1)",
+                    fontFamily: " Roboto Condensed Medium",
+                  }}
+                >
+                  {wallet ? point : "--"}
+                </Box>
               </Box>
-              <Box
-                sx={{
-                  fontSize: "48px",
-                  color: "rgba(232, 214, 152, 1)",
-                  fontFamily: " Roboto Condensed Medium",
-                }}
-              >
-                {wallet ? point : "--"}
-              </Box>
-            </Box>
+              {wallet && (
+                <Box sx={{ display: "flex", flexDirection: "column-reverse" }}>
+                  <Button
+                    sx={{
+                      background: "rgba(232, 214, 152, 1) !important",
+                      outline: "none !important",
+                      color: "#000",
+                      fontFamily: "Roboto Condensed Medium",
+                      fontWeight: "500",
+                    }}
+                    onClick={() => {
+                      setShowModal(true);
+                    }}
+                  >
+                    {/* <img src={bag} /> */}
+                    DEPOSIT $BROOM TO EARN
+                  </Button>
+                </Box>
+              )}
+            </Stack>
             <Stack
               direction={"row"}
               sx={{
@@ -170,7 +190,7 @@ function App() {
                   paddingRight: "35px",
                 }}
               >
-                <Box>BLUR DEPOSITED</Box>
+                <Box>$BROOM DEPOSITED</Box>
                 <Box
                   sx={{
                     fontFamily: " Roboto Condensed Medium",
@@ -235,43 +255,101 @@ function App() {
               left: "50%",
               transform: "translate(-50%,-50%)",
               background: "rgb(8,4,4)",
-              border: "1px solid rgb(48,48,48)",
+              border: "1px solid rgb(231,214,152)",
+              borderRadius: "8px",
               color: "#fff",
               padding: "1rem",
             }}
           >
-            <Box>DEPOSIT $BLUR TO EARN</Box>
+            <Box
+              sx={{
+                borderBottom: "1px solid rgb(48, 48, 48)",
+                padding: "8px",
+              }}
+            >
+              DEPOSIT $BROOM TO EARN
+            </Box>
             <Stack direction={"row"}>
-              <Button
+              <Box
                 sx={{
-                  flex: "1 1 auto",
-                  display: "flex",
-                  flexDirection: "column",
+                  flex: "1 1 0px",
+                  background: "rgb(30, 30, 30)",
+                  margin: "1rem",
+                  padding: "16px",
                 }}
               >
                 <Box>0</Box>
-                <Box>blur wallet balance</Box>
-              </Button>
-              <Button
+                <Box>$BROOM wallet balance</Box>
+              </Box>
+              <Box
                 sx={{
-                  flex: "1 1 auto",
-                  display: "flex",
-                  flexDirection: "column",
+                  flex: "1 1 0px",
+                  background: "rgb(30, 30, 30)",
+                  margin: "1rem",
+                  padding: "16px",
                 }}
               >
                 <Box>0</Box>
-                <Box>blur deposited</Box>
-              </Button>
+                <Box>$BROOM deposited</Box>
+              </Box>
             </Stack>
             <Stack direction={"row"} textAlign={"center"}>
-              <Box sx={{ flex: "1 1 auto" }}>deposit blur to hold</Box>
-              <Box sx={{ flex: "1 1 auto" }}>withdraw blur</Box>
+              <Box
+                sx={{
+                  flex: "1 1 0px",
+                  borderBottom:
+                    tab === "deposit"
+                      ? "1px solid rgb(231,214,152)"
+                      : "1px solid rgb(48, 48, 48)",
+                  cursor: "pointer",
+                  color: tab === "deposit" ? "rgb(231,214,152)" : "#fff",
+                }}
+                onClick={() => {
+                  setTab("deposit");
+                }}
+              >
+                <Box
+                  sx={{
+                    textTransform: "uppercase",
+                  }}
+                >
+                  deposit $BROOM to hold
+                </Box>
+                <Box>Earn Points and Multiplier</Box>
+              </Box>
+              <Box
+                sx={{
+                  flex: "1 1 0px",
+                  borderBottom:
+                    tab === "withdraw"
+                      ? "1px solid rgb(231,214,152)"
+                      : "1px solid rgb(48, 48, 48)",
+                  cursor: "pointer",
+                  color: tab === "withdraw" ? "rgb(231,214,152)" : "#fff",
+                }}
+                onClick={() => {
+                  setTab("withdraw");
+                }}
+              >
+                <Box
+                  sx={{
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Withdraw $BROOM
+                </Box>
+                <Box>Lose Multiplier</Box>
+              </Box>
             </Stack>
-            <Stack direction={"row"} justifyContent={"center"}>
+            <Stack
+              direction={"row"}
+              justifyContent={"center"}
+              sx={{ marginTop: "16px" }}
+            >
               <input
                 style={{
                   fontSize: "64px",
-                  color: "orange",
+                  color: "rgba(232, 214, 152, 1)",
                   background: "#000",
                   border: "none",
                   outline: "none",
@@ -283,8 +361,22 @@ function App() {
                 }}
               ></input>
             </Stack>
-            <Box textAlign={"center"}>
-              <Button>Deposit Blur</Button>
+            <Box textAlign={"center"} sx={{ marginTop: "16px" }}>
+              <Button
+                sx={{
+                  background: "rgba(232, 214, 152, 1) !important",
+                  outline: "none !important",
+                  color: "#000",
+                  fontFamily: "Roboto Condensed Medium",
+                  fontWeight: "500",
+                }}
+                onClick={() => {
+                  setShowModal(true);
+                }}
+              >
+                {/* <img src={bag} /> */}
+                {tab === "deposit" ? "DEPOSIT $BROOM" : "WITHDARW $BROOM"}
+              </Button>
             </Box>
           </Box>
         </Modal>
