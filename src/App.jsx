@@ -46,6 +46,7 @@ function App() {
             sx={{
               color: "rgba(232, 214, 152, 1)",
               margin: "0 1rem",
+              marginLeft: "60px",
               cursor: "pointer",
             }}
           >
