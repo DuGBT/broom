@@ -297,7 +297,6 @@ function App() {
       </Stack>
       <Box
         sx={{
-          minHeight: "100vh",
           padding: "0 200px",
           background: "#000",
           color: "#fff",
@@ -319,7 +318,9 @@ function App() {
               }}
             >
               HOLD $BROOM TO EARN
-              <span style={{ color: "rgba(232, 214, 152, 1)" }}>REDACTED</span>
+              <span
+                style={{ color: "rgba(232, 214, 152, 1)" }}
+              >{` REDACTED`}</span>
             </Box>
             <Box
               sx={{
@@ -334,7 +335,7 @@ function App() {
           <Box
             sx={{
               borderTop: "1px solid rgba(212, 207, 165, 0.7)",
-              borderBottom: "1px solid rgba(212, 207, 165, 0.7)",
+              // borderBottom: "1px solid rgba(212, 207, 165, 0.7)",
               borderLeft: "none",
               borderRight: "none",
               // border
@@ -457,41 +458,50 @@ function App() {
                   <Box>Increases 0.5x Per Month</Box>
                 </Box>
               </Stack>
-              <Box>
-                <Box sx={{ marginTop: "20px", marginBottom: "20px" }}>
-                  Lock Data
+              {wallet && lockRes && lockRes.lockData.length > 0 && (
+                <Box
+                  sx={{ borderBottom: "1px solid rgba(212, 207, 165, 0.7)" }}
+                >
+                  <Box
+                    sx={{
+                      marginTop: "20px",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    Lock Data
+                  </Box>
+                  {lockRes && lockRes.lockData.length > 0 && (
+                    <Stack direction={"row"} sx={{ fontFamily: "Rajdhani" }}>
+                      <Box sx={{ flex: "1 1 0px" }}>Amount</Box>
+                      <Box sx={{ flex: "1 1 50px" }}> UnlockTime</Box>
+                      <Box sx={{ flex: "1 1 0px" }}> Remaining</Box>
+                    </Stack>
+                  )}
+                  {lockRes &&
+                    lockRes.lockData &&
+                    lockRes.lockData.map((data, index) => {
+                      return (
+                        <Stack
+                          key={index}
+                          direction={"row"}
+                          sx={{ marginBottom: "20px" }}
+                        >
+                          <Box sx={{ flex: "1 1 0px" }}>
+                            {bigIntToNumber(data.amount)}
+                          </Box>
+                          <Box sx={{ flex: "1 1 50px" }}>
+                            {new Date(data.unlockTime * 1000).toLocaleString()}
+                          </Box>
+                          <Box sx={{ flex: "1 1 0px" }}>
+                            {` ${calculateWeeksRemaining(
+                              data.unlockTime * 1000
+                            )} Weeks`}
+                          </Box>
+                        </Stack>
+                      );
+                    })}
                 </Box>
-                {lockRes && lockRes.lockData.length > 0 && (
-                  <Stack direction={"row"} sx={{ fontFamily: "Rajdhani" }}>
-                    <Box sx={{ flex: "1 1 0px" }}>Amount</Box>
-                    <Box sx={{ flex: "1 1 50px" }}> UnlockTime</Box>
-                    <Box sx={{ flex: "1 1 0px" }}> Remaining</Box>
-                  </Stack>
-                )}
-                {lockRes &&
-                  lockRes.lockData &&
-                  lockRes.lockData.map((data, index) => {
-                    return (
-                      <Stack
-                        key={index}
-                        direction={"row"}
-                        sx={{ marginBottom: "20px" }}
-                      >
-                        <Box sx={{ flex: "1 1 0px" }}>
-                          {bigIntToNumber(data.amount)}
-                        </Box>
-                        <Box sx={{ flex: "1 1 50px" }}>
-                          {new Date(data.unlockTime * 1000).toLocaleString()}
-                        </Box>
-                        <Box sx={{ flex: "1 1 0px" }}>
-                          {` ${calculateWeeksRemaining(
-                            data.unlockTime * 1000
-                          )} Weeks`}
-                        </Box>
-                      </Stack>
-                    );
-                  })}
-              </Box>
+              )}
             </Box>
           </Box>
         </Stack>
