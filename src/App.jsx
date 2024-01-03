@@ -7,16 +7,49 @@ import Modal from "@mui/material/Modal";
 import SweeperIcon from "./assets/SweeperDAO.svg";
 import sweep from "./assets/sweep.svg";
 import bag from "./assets/bag.svg";
-import { useConnectWallet, useAccountCenter } from "@web3-onboard/react";
+import { useConnectWallet, useAccountCenter, init } from "@web3-onboard/react";
+import * as ethers from "ethers";
+import { ABI } from "./broomAbi";
+import { erc20TokenAbi } from "./erc20Token";
 
+function bigIntToNumber(param, calMulti) {
+  if (calMulti) {
+    return Number(BigInt(param)) / 10000;
+  }
+  return Number(BigInt(param) / 10n ** 16n) / 100;
+}
+function numberToBigInt(param) {
+  return BigInt(param * 100) * 10n ** 16n;
+}
+function calculateWeeksRemaining(timestamp) {
+  const now = Date.now();
+
+  const timeDifference = timestamp - now;
+
+  if (timeDifference <= 0) {
+    return 0;
+  }
+
+  const weeksRemaining = Math.floor(timeDifference / (7 * 24 * 60 * 60 * 1000));
+
+  return weeksRemaining;
+}
 function App() {
   const [showModal, setShowModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
-  const [point, setPoint] = useState(10000);
-  const [multiplier, setMultiplier] = useState(1.01);
+  const [point, setPoint] = useState(0);
+  const [multiplier, setMultiplier] = useState(1);
+  const [score, setScore] = useState(0);
+  const [deposited, setDeposited] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [allowance, setAllowance] = useState(0);
   const [tab, setTab] = useState("deposit");
   const [value, setValue] = useState(0);
+  const [lockRes, setLockRes] = useState();
+  const [initialScore, setInitialScore] = useState(0);
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
+  const [contract, setContract] = useState();
+  const [broomContract, setBroomContract] = useState();
   const updateAccountCenter = useAccountCenter();
 
   const handleClose = () => {
@@ -25,14 +58,191 @@ function App() {
   useEffect(() => {
     updateAccountCenter({ enabled: false });
   }, []);
+
+  async function getBalance() {
+    try {
+      const address = wallet.accounts[0].address;
+      const res = await broomContract.balanceOf(address);
+
+      setBalance(bigIntToNumber(res._hex));
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function checkApprove() {
+    try {
+      const address = wallet.accounts[0].address;
+
+      const res = await broomContract.allowance(
+        address,
+        "0xac4fe81069cce659b06e358eb984b2ea38c8984b"
+      );
+      setAllowance(bigIntToNumber(res._hex));
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function approve(value) {
+    try {
+      const transaction = await broomContract.approve(
+        "0xac4fe81069cce659b06e358eb984b2ea38c8984b",
+        numberToBigInt(value)
+      );
+      const receipt = await transaction.wait();
+      if (receipt.status === 1) {
+        checkApprove();
+      } else {
+        console.error("Transaction failed. Error message:", receipt.statusText);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async function getDeposited() {
+    try {
+      const address = wallet.accounts[0].address;
+      const res = await contract.balanceOf(address);
+      setDeposited(bigIntToNumber(res._hex));
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function getScore() {
+    try {
+      const address = wallet.accounts[0].address;
+      const res = await contract.scoreOf(address);
+      setScore(bigIntToNumber(res._hex));
+      setInitialScore(bigIntToNumber(res._hex));
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function getPoint() {
+    try {
+      const address = wallet.accounts[0].address;
+      const res = await contract.pointsOf(address);
+
+      setPoint(bigIntToNumber(res._hex));
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function getMultiplier() {
+    try {
+      const address = wallet.accounts[0].address;
+      const res = await contract.multiplierOf(address);
+      setMultiplier(bigIntToNumber(res._hex, true));
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function getLockData() {
+    try {
+      const address = wallet.accounts[0].address;
+      const res = await contract.lockedBalances(address);
+      setLockRes(res);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async function deposit(value) {
+    try {
+      const transaction = await contract.deposit(numberToBigInt(value));
+      const receipt = await transaction.wait();
+      if (receipt.status === 1) {
+        checkApprove();
+        getBalance();
+        getDeposited();
+      } else {
+        console.error("Transaction failed. Error message:", receipt.statusText);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function withdraw(value) {
+    try {
+      const transaction = await contract.withdraw(numberToBigInt(value));
+      const receipt = await transaction.wait();
+      if (receipt.status === 1) {
+        getBalance();
+        getDeposited();
+      } else {
+        console.error("Transaction failed. Error message:", receipt.statusText);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
   useEffect(() => {
-    setInterval(() => {
-      setPoint((point) => {
-        const result = point + 1000 / 3600;
-        return +result.toFixed(2);
-      });
-    }, 1000);
-  }, [multiplier]);
+    if (wallet && broomContract) {
+      getBalance();
+      checkApprove();
+    }
+  }, [wallet, broomContract]);
+
+  useEffect(() => {
+    if (initialScore > 0 && deposited > 0) {
+      setInterval(() => {
+        setScore((score) => {
+          return score + deposited / 3600;
+        });
+      }, 1000);
+    }
+  }, [initialScore, deposited, multiplier]);
+
+  useEffect(() => {
+    async function Connect() {
+      if (wallet) {
+        const provider = new ethers.providers.Web3Provider(wallet.provider);
+        const signer = await provider.getSigner();
+        const Contract = new ethers.Contract(
+          "0xac4fe81069cCe659b06e358eB984b2EA38c8984B",
+          ABI,
+          provider
+        );
+        const broomContract = new ethers.Contract(
+          "0xcA821c688F3647321d791D1e3DC8267a27F37b09",
+          erc20TokenAbi,
+          provider
+        );
+        setContract(Contract.connect(signer));
+        setBroomContract(broomContract.connect(signer));
+      }
+    }
+    Connect();
+  }, [wallet]);
+
+  useEffect(() => {
+    async function fetchUserData() {
+      try {
+        getMultiplier();
+        getScore();
+        getPoint();
+        getDeposited();
+        getLockData();
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    if (contract && wallet) {
+      fetchUserData();
+    }
+  }, [contract, wallet]);
+
+  // useEffect(() => {
+  //   setInterval(() => {
+  //     setPoint((point) => {
+  //       const result = point + 1000 / 3600;
+  //       return +result.toFixed(2);
+  //     });
+  //   }, 1000);
+  // }, [multiplier]);
+
+  const approved = balance > 0 && allowance >= value;
+
   return (
     <Box sx={{ padding: "1rem" }}>
       <Stack
@@ -123,9 +333,11 @@ function App() {
           </Box>
           <Box
             sx={{
-              border: "1px solid rgba(212, 207, 165, 0.7)",
+              borderTop: "1px solid rgba(212, 207, 165, 0.7)",
+              borderBottom: "1px solid rgba(212, 207, 165, 0.7)",
               borderLeft: "none",
               borderRight: "none",
+              // border
               fontFamily: " Roboto Condensed",
               color: "rgba(146, 146, 146, 1)",
               fontSize: "16px",
@@ -150,7 +362,7 @@ function App() {
                     fontFamily: " Roboto Condensed Medium",
                   }}
                 >
-                  {wallet ? point : "--"}
+                  {wallet ? (score * multiplier).toFixed(2) : "--"}
                 </Box>
               </Box>
               {wallet && (
@@ -173,78 +385,117 @@ function App() {
                 </Box>
               )}
             </Stack>
-            <Stack
-              direction={"row"}
-              sx={{
-                padding: "12px 0",
-                borderTop: "1px solid rgba(212, 207, 165, 0.7)",
-                marginTop: "20px",
-              }}
-            >
-              <Box
+            <Box>
+              <Stack
+                direction={"row"}
                 sx={{
-                  flex: "1 1 auto",
-                  borderRight: "1px solid rgba(212, 207, 165, 0.7)",
-                  textAlign: "left",
-                  whiteSpace: "nowrap",
-                  paddingRight: "35px",
+                  padding: "12px 0",
+                  borderTop: "1px solid rgba(212, 207, 165, 0.7)",
+                  borderBottom: "1px solid rgba(212, 207, 165, 0.7)",
+                  marginTop: "20px",
                 }}
               >
-                <Box>$BROOM DEPOSITED</Box>
                 <Box
                   sx={{
-                    fontFamily: " Roboto Condensed Medium",
-                    fontSize: "24px",
-                    color: "#fff",
+                    flex: "1 1 auto",
+                    borderRight: "1px solid rgba(212, 207, 165, 0.7)",
+                    textAlign: "left",
+                    whiteSpace: "nowrap",
+                    paddingRight: "35px",
                   }}
                 >
-                  {wallet ? 100 : "--"}
+                  <Box>$BROOM DEPOSITED</Box>
+                  <Box
+                    sx={{
+                      fontFamily: " Roboto Condensed Medium",
+                      fontSize: "24px",
+                      color: "#fff",
+                    }}
+                  >
+                    {wallet ? deposited : "--"}
+                  </Box>
+                  <Box>Earning Holder Points</Box>
+                  {/* <Button sx={{}}>Withdraw</Button> */}
                 </Box>
-                <Box>Earning Holder Points</Box>
-                {/* <Button sx={{}}>Withdraw</Button> */}
-              </Box>
-              <Box
-                sx={{
-                  flex: "1 1 auto",
-                  borderRight: "1px solid rgba(212, 207, 165, 0.7)",
-                  padding: "0 35px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Box>HOLDER POINTS</Box>
                 <Box
                   sx={{
-                    fontFamily: " Roboto Condensed Medium",
-                    fontSize: "24px",
-                    color: "#fff",
+                    flex: "1 1 auto",
+                    borderRight: "1px solid rgba(212, 207, 165, 0.7)",
+                    padding: "0 35px",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {wallet ? 10000 : "--"}
+                  <Box>HOLDER POINTS</Box>
+                  <Box
+                    sx={{
+                      fontFamily: " Roboto Condensed Medium",
+                      fontSize: "24px",
+                      color: "#fff",
+                    }}
+                  >
+                    {wallet ? point : "--"}
+                  </Box>
+                  <Box>Earning {wallet ? deposited : "--"} PTS Per Hour</Box>
                 </Box>
-                <Box>Earning {wallet ? 1000 : "--"} PTS Per Hour</Box>
-              </Box>
-              <Box
-                sx={{
-                  flex: "1 1 auto",
-                  padding: "0 35px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Box>MULTIPLIER</Box>
                 <Box
                   sx={{
-                    fontFamily: " Roboto Condensed Medium",
-                    fontSize: "24px",
-                    color: "#fff",
+                    flex: "1 1 auto",
+                    padding: "0 35px",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {wallet ? "1X" : "--"}
+                  <Box>MULTIPLIER</Box>
+                  <Box
+                    sx={{
+                      fontFamily: " Roboto Condensed Medium",
+                      fontSize: "24px",
+                      color: "#fff",
+                    }}
+                  >
+                    {wallet ? `${multiplier}X` : "--"}
+                  </Box>
+                  <Box>Increases 0.5x Per Month</Box>
                 </Box>
-                <Box>Increases 0.5x Per Month</Box>
+              </Stack>
+              <Box>
+                <Box sx={{ marginTop: "20px", marginBottom: "20px" }}>
+                  Lock Data
+                </Box>
+                {lockRes && lockRes.lockData.length > 0 && (
+                  <Stack direction={"row"} sx={{ fontFamily: "Rajdhani" }}>
+                    <Box sx={{ flex: "1 1 0px" }}>Amount</Box>
+                    <Box sx={{ flex: "1 1 50px" }}> UnlockTime</Box>
+                    <Box sx={{ flex: "1 1 0px" }}> Remaining</Box>
+                  </Stack>
+                )}
+                {lockRes &&
+                  lockRes.lockData &&
+                  lockRes.lockData.map((data, index) => {
+                    return (
+                      <Stack
+                        key={index}
+                        direction={"row"}
+                        sx={{ marginBottom: "20px" }}
+                      >
+                        <Box sx={{ flex: "1 1 0px" }}>
+                          {bigIntToNumber(data.amount)}
+                        </Box>
+                        <Box sx={{ flex: "1 1 50px" }}>
+                          {new Date(data.unlockTime * 1000).toLocaleString()}
+                        </Box>
+                        <Box sx={{ flex: "1 1 0px" }}>
+                          {` ${calculateWeeksRemaining(
+                            data.unlockTime * 1000
+                          )} Weeks`}
+                        </Box>
+                      </Stack>
+                    );
+                  })}
               </Box>
-            </Stack>
+            </Box>
           </Box>
         </Stack>
+
         <Modal open={showModal} onClose={handleClose}>
           <Box
             sx={{
@@ -278,7 +529,7 @@ function App() {
                   padding: "16px",
                 }}
               >
-                <Box>0</Box>
+                <Box>{balance}</Box>
                 <Box>$BROOM wallet balance</Box>
               </Box>
               <Box
@@ -289,7 +540,7 @@ function App() {
                   padding: "16px",
                 }}
               >
-                <Box>0</Box>
+                <Box>{deposited}</Box>
                 <Box>$BROOM deposited</Box>
               </Box>
             </Stack>
@@ -370,12 +621,28 @@ function App() {
                   fontFamily: "Roboto Condensed Medium",
                   fontWeight: "500",
                 }}
-                onClick={() => {
-                  setShowModal(true);
+                onClick={async () => {
+                  try {
+                    if (tab === "deposit") {
+                      if (!approved) {
+                        approve(value);
+                      } else {
+                        deposit(value);
+                      }
+                    } else {
+                      withdraw(value);
+                    }
+                  } catch (error) {
+                    console.log(error);
+                  }
                 }}
               >
                 {/* <img src={bag} /> */}
-                {tab === "deposit" ? "DEPOSIT $BROOM" : "WITHDARW $BROOM"}
+                {tab === "deposit"
+                  ? approved
+                    ? "DEPOSIT $BROOM"
+                    : "Approve"
+                  : "WITHDARW $BROOM"}
               </Button>
             </Box>
           </Box>
