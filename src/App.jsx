@@ -75,7 +75,7 @@ function App() {
 
       const res = await broomContract.allowance(
         address,
-        "0xac4fe81069cce659b06e358eb984b2ea38c8984b"
+        "0x6d6456f5471768F49c9f82Cb3fEC67439f77D1b7"
       );
       setAllowance(bigIntToNumber(res._hex));
     } catch (error) {
@@ -85,7 +85,7 @@ function App() {
   async function approve(value) {
     try {
       const transaction = await broomContract.approve(
-        "0xac4fe81069cce659b06e358eb984b2ea38c8984b",
+        "0x6d6456f5471768F49c9f82Cb3fEC67439f77D1b7",
         numberToBigInt(value)
       );
       const receipt = await transaction.wait();
@@ -147,6 +147,18 @@ function App() {
     }
   }
 
+  async function fetchUserData() {
+    try {
+      getMultiplier();
+      getScore();
+      getPoint();
+      getDeposited();
+      getLockData();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   async function deposit(value) {
     try {
       const transaction = await contract.deposit(numberToBigInt(value));
@@ -154,7 +166,7 @@ function App() {
       if (receipt.status === 1) {
         checkApprove();
         getBalance();
-        getDeposited();
+        fetchUserData();
       } else {
         console.error("Transaction failed. Error message:", receipt.statusText);
       }
@@ -168,7 +180,7 @@ function App() {
       const receipt = await transaction.wait();
       if (receipt.status === 1) {
         getBalance();
-        getDeposited();
+        fetchUserData();
       } else {
         console.error("Transaction failed. Error message:", receipt.statusText);
       }
@@ -199,7 +211,7 @@ function App() {
         const provider = new ethers.providers.Web3Provider(wallet.provider);
         const signer = await provider.getSigner();
         const Contract = new ethers.Contract(
-          "0xac4fe81069cCe659b06e358eB984b2EA38c8984B",
+          "0x6d6456f5471768F49c9f82Cb3fEC67439f77D1b7",
           ABI,
           provider
         );
@@ -231,15 +243,6 @@ function App() {
       fetchUserData();
     }
   }, [contract, wallet]);
-
-  // useEffect(() => {
-  //   setInterval(() => {
-  //     setPoint((point) => {
-  //       const result = point + 1000 / 3600;
-  //       return +result.toFixed(2);
-  //     });
-  //   }, 1000);
-  // }, [multiplier]);
 
   const approved = balance > 0 && allowance >= value;
 
@@ -458,17 +461,47 @@ function App() {
                   <Box>Increases 0.5x Per Month</Box>
                 </Box>
               </Stack>
-              {wallet && lockRes && lockRes.lockData.length > 0 && (
+              {wallet && lockRes && bigIntToNumber(lockRes.total) > 0 && (
                 <Box
                   sx={{ borderBottom: "1px solid rgba(212, 207, 165, 0.7)" }}
                 >
+                  <Stack
+                    direction={"row"}
+                    justifyContent={"space-between"}
+                    alignItems={"center"}
+                  >
+                    <Box
+                      sx={{
+                        marginTop: "20px",
+                        marginBottom: "20px",
+                      }}
+                    >
+                      Lock Data
+                    </Box>
+                    {bigIntToNumber(lockRes.releasable) > 0 && (
+                      <Button
+                        sx={{
+                          background: "rgba(232, 214, 152, 1) !important",
+                          outline: "none !important",
+                          color: "#000",
+                          fontFamily: "Roboto Condensed Medium",
+                          height: "36.5px",
+                          fontWeight: "500",
+                        }}
+                        onClick={() => {
+                          withdraw(bigIntToNumber(lockRes.releasable));
+                        }}
+                      >
+                        withdraw Expired
+                      </Button>
+                    )}
+                  </Stack>
                   <Box
                     sx={{
-                      marginTop: "20px",
                       marginBottom: "20px",
                     }}
                   >
-                    Lock Data
+                    {`Releasable: ${bigIntToNumber(lockRes.releasable)}`}
                   </Box>
                   {lockRes && lockRes.lockData.length > 0 && (
                     <Stack direction={"row"} sx={{ fontFamily: "Rajdhani" }}>
