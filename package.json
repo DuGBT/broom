@@ -10,11 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.485.0",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@mui/material": "^5.15.2",
     "@web3-onboard/injected-wallets": "^2.10.10",
     "@web3-onboard/react": "^2.8.13",
+    "antd": "^5.12.7",
+    "axios": "^1.6.4",
     "ethers": "5.5.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

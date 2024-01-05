@@ -6,7 +6,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./index.css";
 import injectedModule from "@web3-onboard/injected-wallets";
 import Landing from "./Landing.jsx";
-
+import Admin from "./Admin";
 const INFURA_KEY = "b0caabe4b0bc4153a499536aa88a053d";
 const injected = injectedModule();
 
@@ -41,6 +41,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <Landing />,
+  },
+  {
+    path: "/broom-admin",
+    element: <Admin />,
   },
 ]);
 ReactDOM.createRoot(document.getElementById("root")).render(
