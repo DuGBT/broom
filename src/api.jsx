@@ -6,3 +6,7 @@ const baseUrl =
 export const openAirDrop = (params) => {
   return axios.post(`${baseUrl}/broom/admin/open_broom_airdrop`, { ...params });
 };
+
+export const getAirdropProof = (params) => {
+  return axios.get(`${baseUrl}/broom/user_airdrop_proof`, { params });
+};

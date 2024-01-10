@@ -7,6 +7,7 @@ import "./index.css";
 import injectedModule from "@web3-onboard/injected-wallets";
 import Landing from "./Landing.jsx";
 import Admin from "./Admin";
+import Claim from "./Claim";
 const INFURA_KEY = "b0caabe4b0bc4153a499536aa88a053d";
 const injected = injectedModule();
 
@@ -45,6 +46,10 @@ const router = createBrowserRouter([
   {
     path: "/broom-admin",
     element: <Admin />,
+  },
+  {
+    path: "/claim",
+    element: <Claim />,
   },
 ]);
 ReactDOM.createRoot(document.getElementById("root")).render(

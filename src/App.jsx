@@ -1,3 +1,4 @@
+import Layout from "./Layout";
 import { useState, useEffect } from "react";
 import "./App.css";
 import Box from "@mui/material/Box";
@@ -7,10 +8,13 @@ import Modal from "@mui/material/Modal";
 import SweeperIcon from "./assets/SweeperDAO.svg";
 import sweep from "./assets/sweep.svg";
 import bag from "./assets/bag.svg";
-import { useConnectWallet, useAccountCenter, init } from "@web3-onboard/react";
+import { useConnectWallet, useAccountCenter } from "@web3-onboard/react";
 import * as ethers from "ethers";
 import { ABI } from "./broomAbi";
 import { erc20TokenAbi } from "./erc20Token";
+import { airdropABI } from "./broomAirdrop";
+import { getAirdropProof } from "./api";
+import StakeLP from "./StakeLP";
 
 function bigIntToNumber(param, calMulti) {
   if (calMulti) {
@@ -47,9 +51,12 @@ function App() {
   const [value, setValue] = useState(0);
   const [lockRes, setLockRes] = useState();
   const [initialScore, setInitialScore] = useState(0);
-  const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
+  const [{ wallet }, connect, disconnect] = useConnectWallet();
   const [contract, setContract] = useState();
   const [broomContract, setBroomContract] = useState();
+  const [broomAirdropContract, setBroomAirdropContract] = useState();
+  const [claimRes, setClaimRes] = useState({});
+
   const updateAccountCenter = useAccountCenter();
 
   const handleClose = () => {
@@ -98,6 +105,18 @@ function App() {
       console.log(error);
     }
   }
+  useEffect(() => {
+    async function getClaimRes() {
+      try {
+        const address = wallet.accounts[0].address;
+        const res = await getAirdropProof({ address });
+        setClaimRes(res.data.data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    if (wallet) getClaimRes();
+  }, [wallet]);
 
   async function getDeposited() {
     try {
@@ -220,6 +239,12 @@ function App() {
           erc20TokenAbi,
           provider
         );
+        const airdropContract = new ethers.Contract(
+          "0x696f24eb7507cae60d2be265e5acf189e292267a",
+          airdropABI,
+          provider
+        );
+        setBroomAirdropContract(airdropContract.connect(signer));
         setContract(Contract.connect(signer));
         setBroomContract(broomContract.connect(signer));
       }
@@ -247,8 +272,9 @@ function App() {
   const approved = balance > 0 && allowance >= value;
 
   return (
-    <Box sx={{ padding: "1rem" }}>
-      <Stack
+    <Layout>
+      <Box sx={{ padding: "1rem" }}>
+        {/* <Stack
         direction={"row"}
         sx={{ padding: "0 5%", justifyContent: "space-between" }}
       >
@@ -297,18 +323,23 @@ function App() {
               )}...${wallet.accounts[0].address.slice(-4)}`
             : "Connect Wallet"}
         </Button>
-      </Stack>
-      <Box
-        sx={{
-          padding: "0 200px",
-          background: "#000",
-          color: "#fff",
-          textAlign: "center",
-          paddingTop: "1rem",
-        }}
-      >
-        <Stack direction={"row"} sx={{ marginTop: "150px" }}>
-          <Box sx={{ width: "400px", textAlign: "left" }}>
+      </Stack> */}
+        <Box
+          sx={{
+            padding: "0 200px",
+            background: "#000",
+            color: "#fff",
+            textAlign: "center",
+            paddingTop: "1rem",
+          }}
+        >
+          <Box
+            sx={{
+              textAlign: "left",
+              marginRight: "50px",
+              marginBottom: "100px",
+            }}
+          >
             <Box sx={{ marginBottom: "12px" }}>
               <img src={sweep} />
             </Box>
@@ -537,216 +568,229 @@ function App() {
               )}
             </Box>
           </Box>
-        </Stack>
-
-        <Modal open={showModal} onClose={handleClose}>
-          <Box
-            sx={{
-              position: "absolute",
-              height: "500px",
-              width: "800px",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%,-50%)",
-              background: "rgb(8,4,4)",
-              border: "1px solid rgb(231,214,152)",
-              borderRadius: "8px",
-              color: "#fff",
-              padding: "1rem",
-            }}
-          >
+          <StakeLP />
+          <Modal open={showModal} onClose={handleClose}>
             <Box
               sx={{
-                borderBottom: "1px solid rgb(48, 48, 48)",
-                padding: "8px",
+                position: "absolute",
+                height: "500px",
+                width: "800px",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%,-50%)",
+                background: "rgb(8,4,4)",
+                border: "1px solid rgb(231,214,152)",
+                borderRadius: "8px",
+                color: "#fff",
+                padding: "1rem",
               }}
             >
-              DEPOSIT $BROOM TO EARN
-            </Box>
-            <Stack direction={"row"}>
               <Box
                 sx={{
-                  flex: "1 1 0px",
-                  background: "rgb(30, 30, 30)",
-                  margin: "1rem",
-                  padding: "16px",
+                  borderBottom: "1px solid rgb(48, 48, 48)",
+                  padding: "8px",
                 }}
               >
-                <Box>{balance}</Box>
-                <Box>$BROOM wallet balance</Box>
+                DEPOSIT $BROOM TO EARN
               </Box>
-              <Box
-                sx={{
-                  flex: "1 1 0px",
-                  background: "rgb(30, 30, 30)",
-                  margin: "1rem",
-                  padding: "16px",
-                }}
-              >
-                <Box>{deposited}</Box>
-                <Box>$BROOM deposited</Box>
-              </Box>
-            </Stack>
-            <Stack direction={"row"} textAlign={"center"}>
-              <Box
-                sx={{
-                  flex: "1 1 0px",
-                  borderBottom:
-                    tab === "deposit"
-                      ? "1px solid rgb(231,214,152)"
-                      : "1px solid rgb(48, 48, 48)",
-                  cursor: "pointer",
-                  color: tab === "deposit" ? "rgb(231,214,152)" : "#fff",
-                }}
-                onClick={() => {
-                  setTab("deposit");
-                }}
-              >
+              <Stack direction={"row"}>
                 <Box
                   sx={{
-                    textTransform: "uppercase",
+                    flex: "1 1 0px",
+                    background: "rgb(30, 30, 30)",
+                    margin: "1rem",
+                    padding: "16px",
                   }}
                 >
-                  deposit $BROOM to hold
+                  <Box>{balance}</Box>
+                  <Box>$BROOM wallet balance</Box>
                 </Box>
-                <Box>Earn Points and Multiplier</Box>
-              </Box>
-              <Box
-                sx={{
-                  flex: "1 1 0px",
-                  borderBottom:
-                    tab === "withdraw"
-                      ? "1px solid rgb(231,214,152)"
-                      : "1px solid rgb(48, 48, 48)",
-                  cursor: "pointer",
-                  color: tab === "withdraw" ? "rgb(231,214,152)" : "#fff",
-                }}
-                onClick={() => {
-                  setTab("withdraw");
-                }}
-              >
                 <Box
                   sx={{
-                    textTransform: "uppercase",
+                    flex: "1 1 0px",
+                    background: "rgb(30, 30, 30)",
+                    margin: "1rem",
+                    padding: "16px",
                   }}
                 >
-                  Withdraw $BROOM
+                  <Box>{deposited}</Box>
+                  <Box>$BROOM deposited</Box>
                 </Box>
-                <Box>Lose Multiplier</Box>
-              </Box>
-            </Stack>
-            <Stack
-              direction={"row"}
-              justifyContent={"center"}
-              sx={{ marginTop: "16px" }}
-            >
-              <input
-                style={{
-                  fontSize: "64px",
-                  color: "rgba(232, 214, 152, 1)",
-                  background: "#000",
-                  border: "none",
-                  outline: "none",
-                }}
-                value={value}
-                size={String(value).length || 1}
-                onChange={(e) => {
-                  setValue(e.target.value);
-                }}
-              ></input>
-            </Stack>
-            <Box textAlign={"center"} sx={{ marginTop: "16px" }}>
-              <Button
-                sx={{
-                  background: "rgba(232, 214, 152, 1) !important",
-                  outline: "none !important",
-                  color: "#000",
-                  fontFamily: "Roboto Condensed Medium",
-                  fontWeight: "500",
-                }}
-                onClick={async () => {
-                  try {
-                    if (tab === "deposit") {
-                      if (!approved) {
-                        approve(value);
+              </Stack>
+              <Stack direction={"row"} textAlign={"center"}>
+                <Box
+                  sx={{
+                    flex: "1 1 0px",
+                    borderBottom:
+                      tab === "deposit"
+                        ? "1px solid rgb(231,214,152)"
+                        : "1px solid rgb(48, 48, 48)",
+                    cursor: "pointer",
+                    color: tab === "deposit" ? "rgb(231,214,152)" : "#fff",
+                  }}
+                  onClick={() => {
+                    setTab("deposit");
+                  }}
+                >
+                  <Box
+                    sx={{
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    deposit $BROOM to hold
+                  </Box>
+                  <Box>Earn Points and Multiplier</Box>
+                </Box>
+                <Box
+                  sx={{
+                    flex: "1 1 0px",
+                    borderBottom:
+                      tab === "withdraw"
+                        ? "1px solid rgb(231,214,152)"
+                        : "1px solid rgb(48, 48, 48)",
+                    cursor: "pointer",
+                    color: tab === "withdraw" ? "rgb(231,214,152)" : "#fff",
+                  }}
+                  onClick={() => {
+                    setTab("withdraw");
+                  }}
+                >
+                  <Box
+                    sx={{
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Withdraw $BROOM
+                  </Box>
+                  <Box>Lose Multiplier</Box>
+                </Box>
+              </Stack>
+              <Stack
+                direction={"row"}
+                justifyContent={"center"}
+                sx={{ marginTop: "16px" }}
+              >
+                <input
+                  style={{
+                    fontSize: "64px",
+                    color: "rgba(232, 214, 152, 1)",
+                    background: "#000",
+                    border: "none",
+                    outline: "none",
+                  }}
+                  value={value}
+                  size={String(value).length || 1}
+                  onChange={(e) => {
+                    setValue(e.target.value);
+                  }}
+                ></input>
+              </Stack>
+              <Box textAlign={"center"} sx={{ marginTop: "16px" }}>
+                <Button
+                  sx={{
+                    background: "rgba(232, 214, 152, 1) !important",
+                    outline: "none !important",
+                    color: "#000",
+                    fontFamily: "Roboto Condensed Medium",
+                    fontWeight: "500",
+                  }}
+                  onClick={async () => {
+                    try {
+                      if (tab === "deposit") {
+                        if (!approved) {
+                          approve(value);
+                        } else {
+                          deposit(value);
+                        }
                       } else {
-                        deposit(value);
+                        withdraw(value);
                       }
-                    } else {
-                      withdraw(value);
+                    } catch (error) {
+                      console.log(error);
                     }
-                  } catch (error) {
-                    console.log(error);
-                  }
-                }}
-              >
-                {/* <img src={bag} /> */}
-                {tab === "deposit"
-                  ? approved
-                    ? "DEPOSIT $BROOM"
-                    : "Approve"
-                  : "WITHDARW $BROOM"}
-              </Button>
+                  }}
+                >
+                  {/* <img src={bag} /> */}
+                  {tab === "deposit"
+                    ? approved
+                      ? "DEPOSIT $BROOM"
+                      : "Approve"
+                    : "WITHDARW $BROOM"}
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        </Modal>
-        <Modal
-          open={showClaimModal}
-          onClose={() => {
-            setShowClaimModal(false);
-          }}
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              height: "250px",
-              width: "500px",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%,-50%)",
-              background: "rgb(8,4,4)",
-              border: "1px solid rgb(231,214,152)",
-              borderRadius: "8px",
-              color: "#fff",
-              padding: "1rem",
-              outline: "none",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
+          </Modal>
+          <Modal
+            open={showClaimModal}
+            onClose={() => {
+              setShowClaimModal(false);
             }}
           >
-            <Box sx={{ fontFamily: "Roboto Condensed", fontSize: "22px" }}>
-              CLAIMABLE NOW
-            </Box>
             <Box
               sx={{
-                fontSize: "48px",
-                color: "rgba(232, 214, 152, 1)",
-                fontFamily: " Roboto Condensed Medium",
+                position: "absolute",
+                height: "250px",
+                width: "500px",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%,-50%)",
+                background: "rgb(8,4,4)",
+                border: "1px solid rgb(231,214,152)",
+                borderRadius: "8px",
+                color: "#fff",
+                padding: "1rem",
+                outline: "none",
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
               }}
             >
-              {100}
-            </Box>
-            <Box textAlign={"center"}>
-              <Button
+              <Box sx={{ fontFamily: "Roboto Condensed", fontSize: "22px" }}>
+                CLAIMABLE NOW
+              </Box>
+              <Box
                 sx={{
-                  background: "rgba(232, 214, 152, 1) !important",
-                  outline: "none !important",
-                  color: "#000",
-                  fontFamily: "Roboto Condensed Medium",
-                  fontWeight: "500",
-                  width: "120px",
+                  fontSize: "48px",
+                  color: "rgba(232, 214, 152, 1)",
+                  fontFamily: " Roboto Condensed Medium",
                 }}
               >
-                <img src={bag} />
-                CLAIM
-              </Button>
+                {100}
+              </Box>
+              <Box textAlign={"center"}>
+                <Button
+                  sx={{
+                    background: "rgba(232, 214, 152, 1) !important",
+                    outline: "none !important",
+                    color: "#000",
+                    fontFamily: "Roboto Condensed Medium",
+                    fontWeight: "500",
+                    width: "120px",
+                  }}
+                  onClick={async () => {
+                    try {
+                      const address = wallet.accounts[0].address;
+                      const res = await broomAirdropContract.claim(
+                        address,
+                        BigInt(claimRes.amount),
+                        claimRes.proof
+                      );
+                      console.log(res);
+                    } catch (error) {
+                      console.log(error);
+                    }
+                  }}
+                >
+                  <img src={bag} />
+                  CLAIM
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        </Modal>
+          </Modal>
+        </Box>
       </Box>
-    </Box>
+    </Layout>
   );
 }
 
